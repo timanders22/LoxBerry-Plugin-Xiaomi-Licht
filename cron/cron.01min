@@ -1,0 +1,8 @@
+#!/bin/sh
+# Xiaomi Licht - Waechter, minuetlich (Bauart Govee 0.9.31; laeuft als loxberry).
+# Startet den Dienst neu, wenn er laufen soll, aber nicht laeuft. Den bin-Pfad setzt der Installer ein.
+# Ausdruecklich ueber die Shell aufrufen: geht bei einem misslungenen Update das Ausfuehrungsrecht verloren, schluege
+# der unmittelbare Aufruf lautlos fehl.
+/bin/bash "REPLACELBPBINDIR/dienst.sh" waechter >/dev/null 2>&1
+# Waechter der Befehlsbruecke 1.0.1: startet, haelt an, sendet xiaomilicht/status/befehle. Fehler bleiben auf stderr.
+/bin/bash "REPLACELBPBINDIR/befehlsbruecke.sh" waechter >/dev/null

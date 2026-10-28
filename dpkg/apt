@@ -1,0 +1,9 @@
+# Diese Pakete installiert LoxBerry mit "apt-get -y install" als root waehrend der Plugin-Installation (postinstall.sh
+# laeuft als loxberry und koennte es nicht).
+#
+# mosquitto-clients: mosquitto_sub/mosquitto_pub fuer die Befehlsbruecke 1.0.1 (Befehle aus Loxone ueber das
+# MQTT-Gateway V2). Die Werte gehen ueber den UDP-Eingang des Gateways und brauchen das Paket nicht.
+#
+# Bewusst NICHT eingetragen: php-sockets (das Plugin kommt mit stream_socket_* aus). php-openssl ist auf LoxBerry Teil
+# von PHP; fehlt openssl, sagen es der Reiter Test und bin/healthcheck (miIO braucht AES-128-CBC).
+mosquitto-clients

@@ -1,0 +1,39 @@
+#!/usr/bin/env php
+<?php
+/**
+ * Xiaomi Licht - Anschluss an den LoxBerry-Healthcheck (Gruppe 34, Entwurf 3.6, E-E15; Bauart Saugroboter 1.1.23 /
+ * Docker NG 1.3.20).
+ *
+ * LoxBerry ruft eine ausfuehrbare Datei bin/healthcheck des Plugins als Benutzer loxberry auf - einmal mit 'title',
+ * einmal mit 'check' (Regeln/03). Antwort: JSON mit desc, status, result, logfile; Status 3 Fehler, 4 Warnung, 5 in
+ * Ordnung, 6 Hinweis. NUR AUS DATEIEN (lauf.json, werte.json, Konfiguration, Zustand der Befehlsbruecke,
+ * subscriptions.json): kein Abruf bei Lampe, Broker oder Cloud, nichts angelegt (xl_config(false)), unter 1 s.
+ * Die Stufen rechnet xl_gesundheit().
+ */
+error_reporting(E_ALL & ~E_DEPRECATED & ~E_NOTICE);
+ini_set('display_errors', '0');
+
+$xl_was = isset($argv[1]) ? strtolower((string) $argv[1]) : 'check';
+if ($xl_was === 'title') {
+    echo "Xiaomi Licht\n";
+    exit(0);
+}
+if (basename(dirname(__DIR__)) === 'plugins' && basename(dirname(dirname(__DIR__))) === 'bin') {
+    $xl_lib = dirname(dirname(dirname(__DIR__))) . '/webfrontend/html/plugins/' . basename(__DIR__) . '/xl_lib.php';
+} else {
+    $xl_lib = dirname(__DIR__) . '/webfrontend/html/xl_lib.php';
+}
+if (!is_file($xl_lib)) {
+    echo json_encode(array('desc' => 'Xiaomi Licht', 'status' => 3,
+        'result' => 'Die Bibliothek xl_lib.php wurde nicht gefunden - das Plugin ist unvollstaendig installiert.')) . "\n";
+    exit(0);
+}
+require_once $xl_lib;
+list($xl_status, $xl_text) = xl_gesundheit();
+echo json_encode(array(
+    'desc'    => 'Xiaomi Licht',
+    'status'  => (int) $xl_status,
+    'result'  => (string) $xl_text,
+    'logfile' => xl_paths()['log'],
+), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "\n";
+exit(0);

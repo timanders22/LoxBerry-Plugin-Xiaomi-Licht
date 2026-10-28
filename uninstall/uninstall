@@ -1,0 +1,109 @@
+#!/bin/bash
+# Xiaomi Licht - uninstall/uninstall (Gruppe 34, Entwurf 3.8; Bauart Govee 0.9.31). Laeuft als root.
+# - nur fuer DIESES Plugin (Name in $2 = xiaomilicht), nie ein Praefixmuster aus dem Ordnernamen (Gedaechtnis
+#   Uninstall-Praefix: zigbee2mqtt riss zigbee2mqttng mit);
+# - eigenen Dienst (argumentweise, voller Pfad) und eigene Befehlsbruecke stoppen;
+# - nur die eigenen zurueckbehaltenen Themen xiaomilicht/lampe<n>/ein|hell|ct|modus mit leerer Nutzlast abraeumen
+#   (xl_dienst.php --mqtt-leeren als loxberry), nie fremde Pakete oder Praefixe;
+# - Zweitschrift und beiseitegelegte Zweitschrift entfernen (sie tragen Lampen-Token und Aktionstoken), dazu der
+#   eigene Datenordner und die eigenen Merker neben ihm.
+if [ -n "$2" ] && [ "$2" != "xiaomilicht" ]; then
+    echo "<INFO> Deinstallation von '$2' - dieses Skript gehoert zu 'xiaomilicht' und tut nichts."
+    exit 0
+fi
+ARGV3=$3
+ARGV5=$5
+PFOLDER="${ARGV3:-xiaomilicht}"
+BASE="${ARGV5:-$LBHOMEDIR}"
+case "$PFOLDER" in
+    ''|*/*|*..*|*'*'*|*'?'*) echo "<WARNING> Unzulaessiger Ordnername '$PFOLDER' - nichts getan."; exit 1 ;;
+esac
+xl_wurzel_suchen() {
+    xl_v=$(cd "$1" 2>/dev/null && pwd -P) || return 1
+    xl_i=0
+    while [ -n "$xl_v" ] && [ "$xl_v" != "/" ] && [ "$xl_i" -lt 8 ]; do
+        if [ -d "$xl_v/config/plugins" ] && [ -d "$xl_v/data/plugins" ] && [ -f "$xl_v/config/system/general.json" ]; then
+            echo "$xl_v"
+            return 0
+        fi
+        xl_v=$(dirname "$xl_v")
+        xl_i=$((xl_i + 1))
+    done
+    return 1
+}
+SELF=$(cd "$(dirname "$(readlink -f "$0")")" && pwd)
+if [ -z "$BASE" ] || [ ! -d "$BASE/config/plugins" ] || [ ! -d "$BASE/data/plugins" ]; then
+    BASE=$(xl_wurzel_suchen "$SELF") || BASE=""
+fi
+if [ -z "$BASE" ]; then
+    echo "<WARNING> Es wurde kein LoxBerry-Wurzelverzeichnis gefunden - es wurde NICHTS geloescht und nichts beendet."
+    exit 1
+fi
+DIENST="$BASE/bin/plugins/$PFOLDER/dienst.sh"
+[ -f "$DIENST" ] && /bin/bash "$DIENST" stop >/dev/null 2>&1
+XL_DIENST="$BASE/bin/plugins/$PFOLDER/xl_dienst.php"
+xl_rest=0
+for d in /proc/[0-9]*; do
+    mapfile -d '' -t a 2>/dev/null < "$d/cmdline" || continue
+    if [ "${#a[@]}" -eq 2 ] && [ "${a[1]}" = "$XL_DIENST" ] && [[ "${a[0]}" =~ (^|/)php[0-9.]*$ ]]; then
+        kill -9 "${d#/proc/}" 2>/dev/null
+        xl_rest=$((xl_rest + 1))
+    fi
+done
+[ "$xl_rest" -gt 0 ] && echo "<WARNING> Dienst: $xl_rest Vorgang/Vorgaenge erst mit kill -9 beendet."
+if command -v php >/dev/null 2>&1 && [ -f "$XL_DIENST" ]; then
+    if [ "$(id -u)" = "0" ] && id loxberry >/dev/null 2>&1; then
+        su -s /bin/bash loxberry -c "$(printf '%q ' env "LBHOMEDIR=$BASE" "LBPPLUGINDIR=$PFOLDER" \
+            timeout 60 php "$XL_DIENST" --mqtt-leeren)" < /dev/null 2>&1 || true
+    else
+        env "LBHOMEDIR=$BASE" "LBPPLUGINDIR=$PFOLDER" timeout 60 php "$XL_DIENST" --mqtt-leeren < /dev/null 2>&1 || true
+    fi
+else
+    echo "<INFO> PHP oder xl_dienst.php fehlt - zurueckbehaltene MQTT-Themen wurden nicht abgeraeumt."
+fi
+BBSH="$BASE/bin/plugins/$PFOLDER/befehlsbruecke.sh"
+BBPHP="$BASE/bin/plugins/$PFOLDER/befehlsbruecke.php"
+BBDIR="$BASE/data/plugins/$PFOLDER/befehle"
+[ -f "$BBSH" ] && timeout 40 bash "$BBSH" stop >/dev/null 2>&1
+bb_rest=0
+for d in /proc/[0-9]*; do
+    mapfile -d '' -t a 2>/dev/null < "$d/cmdline" || continue
+    if [ "${#a[@]}" -eq 2 ] && [ "${a[1]}" = "$BBPHP" ] && [[ "${a[0]}" =~ (^|/)php[0-9.]*$ ]]; then
+        kill -9 "${d#/proc/}" 2>/dev/null
+        bb_rest=$((bb_rest + 1))
+    fi
+done
+bb_abos=0
+for d in /proc/[0-9]*; do
+    read -r c 2>/dev/null < "$d/comm" || continue
+    [ "$c" = "mosquitto_sub" ] || continue
+    mapfile -d '' -t e 2>/dev/null < "$d/environ" || continue
+    for x in "${e[@]}"; do
+        if [ "$x" = "XDG_CONFIG_HOME=$BBDIR/mosquitto" ]; then kill -9 "${d#/proc/}" 2>/dev/null; bb_abos=$((bb_abos + 1)); fi
+    done
+done
+[ "$bb_rest" -gt 0 ] && echo "<WARNING> Befehlsbruecke: $bb_rest Dienst(e) erst mit kill -9 beendet."
+[ "$bb_abos" -gt 0 ] && echo "<WARNING> Befehlsbruecke: $bb_abos mosquitto_sub erst mit kill -9 beendet."
+if [ -d "$BBDIR" ]; then
+    for f in "$BBDIR/mosquitto/mosquitto_sub" "$BBDIR/mosquitto/mosquitto_pub"; do
+        if [ -f "$f" ]; then
+            n=$(stat -c %s "$f" 2>/dev/null || echo 64)
+            head -c "$n" /dev/zero > "$f" 2>/dev/null
+        fi
+    done
+fi
+SB="$BASE/config/plugins/$PFOLDER.backup.json"
+rm -f "$SB" "$SB.alt" "$SB.neu"
+rm -rf "${BASE:?}/data/plugins/${PFOLDER:?}"
+rm -f "$BASE/data/plugins/$PFOLDER.soll_laufen" "$BASE/data/plugins/$PFOLDER.upgrade_laeuft"
+XL_REST=""
+for f in "$SB" "$SB.alt" "$BBDIR/mosquitto/mosquitto_sub" "$BBDIR/mosquitto/mosquitto_pub"; do
+    [ -e "$f" ] && XL_REST="$XL_REST $f"
+done
+if [ -n "$XL_REST" ]; then
+    echo "<WARNING> Xiaomi Licht entfernt, aber diese Dateien mit Token oder Zugangsdaten liegen noch da und muessen"
+    echo "<WARNING> von Hand geloescht werden:$XL_REST"
+else
+    echo "<OK> Xiaomi Licht entfernt: Dienst und Befehlsbruecke angehalten, Zweitschrift (Lampen-Token) und Datenordner entfernt."
+fi
+exit 0

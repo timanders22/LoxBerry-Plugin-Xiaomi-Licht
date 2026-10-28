@@ -1,0 +1,73 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="bg-grad" cx="50%" cy="50%" r="50%" fx="35%" fy="35%">
+      <stop offset="0%" stop-color="#7dc424" />
+      <stop offset="65%" stop-color="#6dac20" />
+      <stop offset="100%" stop-color="#568819" />
+    </radialGradient>
+    <linearGradient id="kegel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.75" />
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0" />
+    </linearGradient>
+    <radialGradient id="leuchtflaeche" cx="50%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#fffbe6" />
+      <stop offset="70%" stop-color="#ffffff" />
+      <stop offset="100%" stop-color="#e9f4dc" />
+    </radialGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#000000" flood-opacity="0.25" />
+    </filter>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="6" />
+    </filter>
+  </defs>
+
+  <!-- Badge -->
+  <circle cx="256" cy="256" r="246" fill="url(#bg-grad)" />
+  <circle cx="256" cy="256" r="232" fill="none" stroke="#ffffff" stroke-opacity="0.35" stroke-width="3" />
+
+  <!-- Decke -->
+  <path d="M 140 104 L 372 104" stroke="#ffffff" stroke-width="5" stroke-linecap="round" opacity="0.55" />
+
+  <!-- Lichtkegel unter der Leuchte -->
+  <path d="M 172 178 L 120 318 L 392 318 L 340 178 Z" fill="url(#kegel)" />
+
+  <g filter="url(#shadow)">
+    <!-- Deckenleuchte, flach und rund (seitlich leicht von unten) -->
+    <!-- Gehäuse -->
+    <path d="M 160 128 C 160 112 352 112 352 128 L 346 162 C 346 176 166 176 166 162 Z" fill="#ffffff" />
+    <!-- Kante zwischen Gehäuse und Leuchtfläche -->
+    <ellipse cx="256" cy="164" rx="90" ry="14" fill="#cfe6b4" />
+    <!-- Leuchtfläche (Diffusor) mit Schein -->
+    <ellipse cx="256" cy="168" rx="84" ry="16" fill="#ffffff" filter="url(#glow)" opacity="0.9" />
+    <ellipse cx="256" cy="166" rx="82" ry="12" fill="url(#leuchtflaeche)" />
+    <!-- LED-Ring als Andeutung der Lichtfarbe (warm bis kalt) -->
+    <ellipse cx="256" cy="166" rx="58" ry="7" fill="none" stroke="#f6c453" stroke-width="3" opacity="0.85" />
+    <ellipse cx="256" cy="166" rx="34" ry="4" fill="none" stroke="#9fd2ff" stroke-width="3" opacity="0.85" />
+  </g>
+
+  <!-- Strahlen nach unten -->
+  <g stroke="#ffffff" stroke-width="5" stroke-linecap="round" opacity="0.75">
+    <line x1="256" y1="200" x2="256" y2="226" />
+    <line x1="206" y1="196" x2="194" y2="220" />
+    <line x1="306" y1="196" x2="318" y2="220" />
+    <line x1="164" y1="188" x2="144" y2="206" />
+    <line x1="348" y1="188" x2="368" y2="206" />
+  </g>
+
+  <!-- Dimmregler-Andeutung: Punkte unterschiedlicher Helligkeit -->
+  <g fill="#ffffff">
+    <circle cx="208" cy="282" r="7" opacity="0.35" />
+    <circle cx="232" cy="282" r="7" opacity="0.55" />
+    <circle cx="256" cy="282" r="7" opacity="0.75" />
+    <circle cx="280" cy="282" r="7" opacity="0.9" />
+    <circle cx="304" cy="282" r="7" opacity="1" />
+  </g>
+
+  <!-- Trennlinie -->
+  <path d="M 150 345 L 362 345" stroke="#ffffff" stroke-width="4" stroke-dasharray="6 8" opacity="0.8" />
+
+  <!-- Schrift -->
+  <text x="256" y="388" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-weight="900" font-size="29" letter-spacing="0.5">Xiaomi Licht</text>
+  <text x="256" y="424" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-weight="bold" font-size="20" letter-spacing="3">LOXBERRY</text>
+</svg>
