@@ -3,9 +3,14 @@
 Bindet Deckenleuchten von Xiaomi und Yeelight an Loxone an und meldet den **echten Zustand** zurück – auch wenn jemand
 die Lampe über die Mi-Home- oder Yeelight-App, Alexa oder den Wandschalter verändert.
 
-Version 0.9.1 · Lizenz MIT · LoxBerry ab 3.0.0 · PHP 7.4 und 8.x
+Version 0.9.2 · Lizenz MIT · LoxBerry ab 3.0.0 · PHP 7.4 und 8.x
 
 ---
+
+## Neu in 0.9.2
+
+Nur Texte: Schalten an yilai.light.ceiling1 ist am Gerät erprobt (direkt über miIO und aus Loxone über die
+Befehlsbrücke 1.0.2) – Hinweise in Oberfläche, Hilfe und README angeglichen; am Code ändert sich nichts.
 
 ## Neu in 0.9.1
 
@@ -18,7 +23,7 @@ Erste Fassung (Stufe A – das Plugin beobachtet; geschaltet wird erst mit zwei 
 * **Rückmeldung in Echtzeit über Yeelight-LAN** (TCP 55443, „LAN-Steuerung“ in der Yeelight-App einschalten): eine
   gehaltene Verbindung je Lampe, jede Änderung kommt sofort. Ohne LAN fragt das Plugin über **miIO** (UDP 54321, Token)
   im Takt ab (Werk 10 s).
-* **Befehle über die Befehlsbrücke 1.0.1**: `xiaomilicht/befehl/lampe<n>/schalten|umschalten|hell|ct|nacht|szene|abruf`
+* **Befehle über die Befehlsbrücke 1.0.2**: `xiaomilicht/befehl/lampe<n>/schalten|umschalten|hell|ct|nacht|szene|abruf`
   (oder `…/alle/…`), Quittung „angenommen“ erst nach dem Code der Lampe. Zwei Haken: „Befehle über MQTT annehmen“
   (Reiter MQTT) und „Lampen aus Loxone schalten“ (Reiter Einstellungen). Gleichwert-Bremse 60 s gegen das Echo eines
   Dimmers, dessen Set-Eingang die Rückmeldung bekommt. ceiling1 schaltet bevorzugt über die Yeelight-LAN-Verbindung
@@ -39,8 +44,13 @@ Erste Fassung (Stufe A – das Plugin beobachtet; geschaltet wird erst mit zwei 
 
 Die Belegung stammt aus der amtlichen MIoT-Spezifikation (home.miot-spec.com); das Modell liest der Dienst aus der
 Lampe (miIO.info). Achtung: bei ceiling3 ist 2/3 der Modus, bei ceiling1 die Farbtemperatur – deshalb eine Tabelle je
-Modell. Am Gerät gemessen (28.10.): ceiling1 lesen und schalten über miIO mit den Yeelight-Befehlen; Schalten über
-Yeelight-LAN und ceiling3 noch nicht.
+Modell. Am Gerät gemessen (28.10., drei ceiling1 mit Firmware 1.3.2_0024): ceiling1 lesen über miIO (get_prop; MIoT
+get_properties lehnt die Lampe mit -5000 ab), Rückmeldung über Yeelight-LAN nach 0,1–0,4 s (auch bei Schaltungen aus
+der Yeelight-App), schalten direkt über miIO (set_power/set_bright/set_ct_abx) und aus Loxone über die Befehlsbrücke
+1.0.2 (`schalten 0|1` und `umschalten` je „angenommen“ nach 0–2 s, `hell 30|0|100` nach 1–2 s, `ct 3000|6500` nach
+1–5 s, `hell 0` = aus; danach meldet die Lampe den neuen Zustand; eine stromlose Lampe ehrlich
+`abgelehnt: KEIN_GRUSS`, Werte -1). Nicht eigens gemessen: Schalten allein über die Yeelight-LAN-Verbindung und das
+Modell ceiling3 (nur gegen eine Attrappe geprüft).
 
 ## Wichtig: Strom
 
@@ -64,5 +74,5 @@ Xiaomi-cloud-tokens-extractor (MIT, nur die Schritte der öffentlichen Schnittst
 
 ## Installation
 
-Bis zum ersten Release von Hand: Archiv in LoxBerry unter „Plugins installieren“ hochladen. Das Repository
-`timanders22/LoxBerry-Plugin-Xiaomi-Licht` entsteht nach dem Gerätetest; bis dahin findet das Auto-Update nichts.
+Archiv eines Releases aus dem Repository `timanders22/LoxBerry-Plugin-Xiaomi-Licht` (besteht seit 28.10.2026) in
+LoxBerry unter „Plugins installieren“ hochladen; spätere Fassungen findet das Auto-Update über die `release.cfg` dort.
