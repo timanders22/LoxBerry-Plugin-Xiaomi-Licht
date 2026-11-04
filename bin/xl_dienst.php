@@ -607,6 +607,8 @@ function xl_dienst_lauf()
         $takt = max(5, min(60, (int) $cfg['abfrage_s']));
         foreach ($lampen as $nr => $d) {
             $vorher = array($d['erreichbar'], $d['weg'], $d['werte']);
+            /* Die Leuchte als Ansage, nach 30 Minuten Dauer; der Name des Nutzers, nie Adresse oder Token. Legt nur hin. */
+            xl_ansage_flanke('geraet', empty($d['erreichbar']), (string) $d['l']['name'] !== '' ? (string) $d['l']['name'] : (string) $nr, 1800);
             if (xl_dz_lan_gewollt($lampen[$nr]) && !is_array($lampen[$nr]['v']) && $jetzt >= $lampen[$nr]['lan_naechst']) {
                 xl_dz_lan_verbinden($nr, $lampen[$nr]);
             }

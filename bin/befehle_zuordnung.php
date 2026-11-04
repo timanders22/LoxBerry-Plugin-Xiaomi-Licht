@@ -56,7 +56,8 @@ return array(
         return xl_befehle_einstellungen();
     },
     'protokoll' => function ($stufe, $text) {
-        xl_log('Befehlsbruecke: ' . ($stufe === 'INFO' ? '' : $stufe . ' ') . $text);
+        // 0.9.3: bb_log() setzt "Befehlsbruecke: " schon vor den Text - bis 0.9.2 stand es doppelt (Nachzug 01.11.2026, wie MGiSmart 1.1.30).
+        xl_log(($stufe === 'INFO' ? '' : $stufe . ' ') . $text);
     },
     'teile' => array('lampe' => 'lampe[1-9][0-9]?|alle'),
     'befehle' => function_exists('xl_befehle') ? array(

@@ -82,6 +82,19 @@ $xl_wert = function ($k, $vorgabe = '') {
 };
 
 /* ---------------- Handler (nur POST mit gueltigem Merkmal; jeder fasst nur seine eigenen Schluessel an) ---------------- */
+/* Sprachansagen, eigenes Formular. Die Testansage spricht immer. */
+if ($xl_post && isset($_POST['ansage_test'])) {
+    list($xl_at, $xl_ag) = xl_ansage_test();
+    if ($xl_at) { $xl_meldungen[] = xl_e(xl_t('ANSAGEPLUGIN.M_TEST_OK')); } else { $xl_fehler[] = xl_e(xl_t('ANSAGEPLUGIN.M_TEST_FEHL') . ' ' . $xl_ag); }
+    $xl_tab = 'tab-settings';
+}
+if ($xl_post && isset($_POST['ansage_speichern'])) {
+    list($xl_ao, $xl_af, $xl_ah) = xl_ansage_post($_POST);
+    if ($xl_af) { foreach ($xl_af as $xl_ax) { $xl_fehler[] = xl_e($xl_ax); } }
+    elseif ($xl_ao) { $xl_meldungen[] = xl_e(trim(xl_t('ANSAGEPLUGIN.M_OK') . ' ' . implode(' ', $xl_ah))); }
+    else { $xl_fehler[] = xl_e(xl_t('ANSAGEPLUGIN.M_FEHL')); }
+    $xl_tab = 'tab-settings';
+}
 if ($xl_post) {
     $xl_cfg = xl_config();
     switch ($xl_formular) {
@@ -880,6 +893,7 @@ $xl_cloud = isset($xl_zusatz['cloud']) && is_array($xl_zusatz['cloud']) ? $xl_zu
   </form>
 </div>
 
+<?= xl_ansage_form_html('<input data-role="none" type="hidden" name="fmt" value="' . xl_e($xl_fmt) . '"><input data-role="none" type="hidden" name="activetab" value="tab-settings">') ?>
 <h2><?= xl_e(xl_t('EINST.H_SICHERUNG')) ?></h2>
 <p class="sm-hilfe"><?= xl_e(xl_t('EINST.SICHERUNG_TEXT')) ?></p>
 <div class="sm-knopfreihe">
