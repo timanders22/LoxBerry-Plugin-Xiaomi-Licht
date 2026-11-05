@@ -380,6 +380,7 @@ if ($xl_post) {
                     $xl_misslungen[] = xl_t('EINST.F_SICHERUNG');
                     break;
                 }
+                while (ob_get_level() > 0) { @ob_end_clean(); }
                 header('Content-Type: application/json; charset=utf-8');
                 header('Content-Disposition: attachment; filename="xiaomilicht-' . date('Ymd-Hi') . '.json"');
                 echo $xl_js;
@@ -421,6 +422,7 @@ if ($xl_post) {
                 $xl_misslungen[] = xl_t('LOX.F_VORLAGE');
                 break;
             }
+            while (ob_get_level() > 0) { @ob_end_clean(); }
             header('Content-Type: application/xml; charset=utf-8');
             header('Content-Disposition: attachment; filename="' . $xl_vname . '"');
             echo $xl_vinhalt;
