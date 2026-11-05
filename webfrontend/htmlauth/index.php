@@ -85,14 +85,15 @@ $xl_wert = function ($k, $vorgabe = '') {
 /* Sprachansagen, eigenes Formular. Die Testansage spricht immer. */
 if ($xl_post && isset($_POST['ansage_test'])) {
     list($xl_at, $xl_ag) = xl_ansage_test();
-    if ($xl_at) { $xl_meldungen[] = xl_e(xl_t('ANSAGEPLUGIN.M_TEST_OK')); } else { $xl_fehler[] = xl_e(xl_t('ANSAGEPLUGIN.M_TEST_FEHL') . ' ' . $xl_ag); }
+    // 0.9.5 (K5): gesammelt wird Klartext, die Ausgabe unten maskiert. Bis 0.9.4 stand ein Apostroph als &#039; auf dem Schirm.
+    if ($xl_at) { $xl_meldungen[] = xl_t('ANSAGEPLUGIN.M_TEST_OK'); } else { $xl_fehler[] = xl_t('ANSAGEPLUGIN.M_TEST_FEHL') . ' ' . $xl_ag; }
     $xl_tab = 'tab-settings';
 }
 if ($xl_post && isset($_POST['ansage_speichern'])) {
     list($xl_ao, $xl_af, $xl_ah) = xl_ansage_post($_POST);
-    if ($xl_af) { foreach ($xl_af as $xl_ax) { $xl_fehler[] = xl_e($xl_ax); } }
-    elseif ($xl_ao) { $xl_meldungen[] = xl_e(trim(xl_t('ANSAGEPLUGIN.M_OK') . ' ' . implode(' ', $xl_ah))); }
-    else { $xl_fehler[] = xl_e(xl_t('ANSAGEPLUGIN.M_FEHL')); }
+    if ($xl_af) { foreach ($xl_af as $xl_ax) { $xl_fehler[] = $xl_ax; } }
+    elseif ($xl_ao) { $xl_meldungen[] = trim(xl_t('ANSAGEPLUGIN.M_OK') . ' ' . implode(' ', $xl_ah)); }
+    else { $xl_fehler[] = xl_t('ANSAGEPLUGIN.M_FEHL'); }
     $xl_tab = 'tab-settings';
 }
 if ($xl_post) {

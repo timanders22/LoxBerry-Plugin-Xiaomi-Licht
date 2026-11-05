@@ -29,18 +29,46 @@ if [ -z "$BASE" ] || [ ! -d "$BASE/config/plugins" ] || [ ! -d "$BASE/data/plugi
 fi
 if [ -z "$BASE" ]; then
     echo "<WARNING> Es wurde kein LoxBerry-Wurzelverzeichnis gefunden - nichts gesichert, kein Dienst angehalten."
-    exit 1
+    exit 2
 fi
 case "$PFOLDER" in
-    ''|*/*|*..*) echo "<WARNING> Unzulaessiger Ordnername '$PFOLDER' - nichts getan."; exit 1 ;;
+    ''|*/*|*..*) echo "<WARNING> Unzulaessiger Ordnername '$PFOLDER' - nichts getan."; exit 2 ;;
 esac
 MARKE="$BASE/data/plugins/$PFOLDER.upgrade_laeuft"
 date +%s > "$MARKE" 2>/dev/null
 if [ -s "$MARKE" ]; then
     echo "<OK> Dienststart bis zum Ende der Aktualisierung gesperrt."
 else
-    echo "<WARNING> Die Marke $MARKE liess sich nicht anlegen - der Dienst koennte waehrend der Aktualisierung anlaufen."
+    # 05.11.2026: ohne Marke haelt die Installation das Update fuer eine Neuinstallation und legt die Einstellungen beiseite; bis hierher nur eine Warnung.
+    rm -f "$MARKE" 2>/dev/null
+    echo "<FAIL> Die Marke $MARKE liess sich nicht anlegen - die Aktualisierung wird abgebrochen,"
+    echo "<FAIL> die bisherige Fassung bleibt unveraendert installiert."
+    exit 2
 fi
+# ---------- Update-Schutz (05.11.2026, Bauart Govee 0.9.34) ----------
+# plugininstall.pl bricht nur bei Rueckgabewert >1 vor purge_installation ab. Die Kopie entsteht als <Ziel>.neu.<pid>, traegt 0600,
+# BEVOR Inhalt hineinkommt, wird mit cmp verglichen und erst dann per mv an ihren Platz gestellt: eine heile Sicherung bleibt heil.
+ZS_FEHL=""
+zs_hinlegen() {   # $1 Quelle, $2 Ziel
+    [ -d "$2" ] && return 1
+    zs_neu="$2.neu.$$"
+    rm -f "$zs_neu" 2>/dev/null
+    if ( : > "$zs_neu" ) 2>/dev/null && chmod 600 "$zs_neu" 2>/dev/null \
+       && cp "$1" "$zs_neu" 2>/dev/null && cmp -s "$1" "$zs_neu" \
+       && mv -f "$zs_neu" "$2" 2>/dev/null; then
+        return 0
+    fi
+    rm -f "$zs_neu" 2>/dev/null
+    return 1
+}
+zs_schluss() {   # Fehlschlag gesammelt: Marke weg, Abbruch vor purge_installation
+    [ -n "$ZS_FEHL" ] || return 0
+    echo "<FAIL> Nicht gesichert:$ZS_FEHL - die Aktualisierung wird abgebrochen, damit der Purge die Originale nicht loescht."
+    echo "<FAIL> Die bisherige Fassung bleibt installiert. Bitte Platz und Rechte unter config/plugins und data/plugins pruefen."
+    rm -f "$MARKE" 2>/dev/null
+    rm -f "$MERKER" 2>/dev/null
+    exit 2
+}
 MERKER="$BASE/data/plugins/$PFOLDER.soll_laufen"
 rm -f "$MERKER"
 if [ -f "$BASE/data/plugins/$PFOLDER/soll_laufen" ]; then
@@ -90,11 +118,11 @@ if [ -s "$CF" ] && command -v php >/dev/null 2>&1; then
     if php -d allow_url_fopen=0 -r '$d = json_decode((string) @file_get_contents($argv[1]), true);
         exit((is_array($d) && ((isset($d["aktionstoken"]) && is_string($d["aktionstoken"]) && $d["aktionstoken"] !== "")
             || (isset($d["lampen"]) && is_array($d["lampen"]) && count($d["lampen"]) > 0))) ? 0 : 1);' "$CF" >/dev/null 2>&1; then
-        if cp "$CF" "$BK.neu" 2>/dev/null && chmod 600 "$BK.neu" 2>/dev/null && mv -f "$BK.neu" "$BK" 2>/dev/null; then
+        if zs_hinlegen "$CF" "$BK"; then
             echo "<OK> Konfiguration gesichert."
         else
-            rm -f "$BK.neu"
             echo "<WARNING> Die Konfiguration liess sich nicht sichern ($BK)."
+            ZS_FEHL="$ZS_FEHL xiaomilicht.json"
         fi
     elif [ -f "$BK" ]; then
         echo "<INFO> xiaomilicht.json traegt keine Einstellungen - die vorhandene Zweitschrift bleibt unberuehrt."
@@ -105,5 +133,6 @@ if [ -f "$XL_BBSH" ]; then
     XL_BBAUS=$(timeout 40 /bin/bash "$XL_BBSH" stop 2>&1)
     echo "<INFO> Befehlsbruecke: $XL_BBAUS"
 fi
+zs_schluss
 echo "<OK> preupgrade abgeschlossen."
 exit 0

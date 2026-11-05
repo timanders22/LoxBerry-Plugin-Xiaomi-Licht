@@ -2943,7 +2943,7 @@ function xl_lampen_pruefen($w)
         }
         foreach (array_keys($z) as $f) {
             if (!in_array((string) $f, $felder, true)) {
-                $m[] = sprintf(xl_t('EINST.SICH_W_EINTRAG'), $zeile, sprintf(xl_t('EINST.SICH_W_FELD_FREMD'), xl_e($f)));
+                $m[] = sprintf(xl_t('EINST.SICH_W_EINTRAG'), $zeile, sprintf(xl_t('EINST.SICH_W_FELD_FREMD'), $f));     // 0.9.5 (K5): die Ausgabe maskiert
             }
         }
         foreach (array('name', 'ip', 'modell') as $f) {
@@ -2955,11 +2955,11 @@ function xl_lampen_pruefen($w)
         if ($ip === '') {
             $m[] = sprintf(xl_t('EINST.FEHLER_IP_FEHLT'), $zeile);
         } elseif (xl_adresse_befund($ip) === 'bereich') {
-            $m[] = sprintf(xl_t('EINST.FEHLER_IP_BEREICH'), $zeile, xl_e($ip));
+            $m[] = sprintf(xl_t('EINST.FEHLER_IP_BEREICH'), $zeile, $ip);
         } elseif (xl_adresse_befund($ip) !== '') {
             $m[] = sprintf(xl_t('EINST.FEHLER_IP'), $zeile);
         } elseif (isset($ips[strtolower($ip)])) {
-            $m[] = sprintf(xl_t('EINST.FEHLER_IP_DOPPELT'), $zeile, xl_e($ip));
+            $m[] = sprintf(xl_t('EINST.FEHLER_IP_DOPPELT'), $zeile, $ip);
         } else {
             $ips[strtolower($ip)] = true;
         }
@@ -3006,7 +3006,7 @@ function xl_sicherung_wert_pruefen($k, $w)
         case 'lampen':
             return xl_lampen_pruefen($w);
     }
-    return array(sprintf(xl_t('EINST.SICH_FREMD'), xl_e($k)));
+    return array(sprintf(xl_t('EINST.SICH_FREMD'), $k));
 }
 
 /**
@@ -3199,6 +3199,8 @@ function xl_ansage_post(array $post)
         return array(false, $t, array());
     }
     $cfg['tts'] = $neu;
+    // 0.9.5: ein eingetipptes oder geloeschtes Sprechtoken ist nicht mehr vom Nachbarn; bis 0.9.4 ueberschrieb es der naechste Abgleich.
+    $cfg['ansage_token_herkunft'] = ansage_token_herkunft_formular($post, isset($cfg['ansage_token_herkunft']) ? $cfg['ansage_token_herkunft'] : array());
     $cfg['ansage_regeln'] = $r;
     $cfg['ansage_haken'] = $hk;
     $t = array();
@@ -3493,7 +3495,7 @@ function xl_sicherung_lesen($roh, $geltend = null, &$namen = null)
             continue;
         }
         if (!array_key_exists($k, $neu)) {
-            $mangel[] = sprintf(xl_t('EINST.SICH_FREMD'), xl_e($k));
+            $mangel[] = sprintf(xl_t('EINST.SICH_FREMD'), $k);
             $namen[] = $k;
             continue;
         }
