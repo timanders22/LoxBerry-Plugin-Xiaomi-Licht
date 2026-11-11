@@ -464,6 +464,77 @@ function xl_token()
     return (string) $cfg['aktionstoken'];
 }
 
+/** Leere Objekte des Rohtextes ($o, json_decode ohne true) im Feld $a wieder als Objekt fuehren (11.11.2026, Muster
+ *  bw_json_leere_objekte() aus Bewaesserung 0.9.56), damit json_encode() sie als {} und nicht als [] schreibt - oben,
+ *  verschachtelt und unter fremden Schluesseln. Nur fuer xl_config_vervollstaendigen(); das Speichern im Formular
+ *  bleibt, wie es ist. */
+function xl_json_leere_objekte($a, $o)
+{
+    if (!is_array($a)) { return $a; }
+    if (is_object($o)) {
+        if (!get_object_vars($o) && $a === array()) { return new stdClass(); }
+        foreach ($a as $k => $v) {
+            $ks = (string) $k;
+            if (is_array($v) && property_exists($o, $ks)) { $a[$k] = xl_json_leere_objekte($v, $o->$ks); }
+        }
+    } elseif (is_array($o)) {
+        foreach ($a as $k => $v) {
+            if (is_array($v) && array_key_exists($k, $o)) { $a[$k] = xl_json_leere_objekte($v, $o[$k]); }
+        }
+    }
+    return $a;
+}
+
+/**
+ * Fehlende Einstellungen EINMAL mit ihrer Vorgabe in xiaomilicht.json schreiben (seit 0.9.8; Regeln/05, Bauform
+ * Docker NG 1.3.7; Entscheidung des Hausherrn vom 11.11.2026). Bis 0.9.7 ergaenzte xl_config() fehlende Schluessel
+ * nur im Speicher (array_merge mit xl_vorgaben()); geschrieben wurde nur beim Speichern im Formular, beim Token und
+ * beim Heilen aus der Zweitschrift. Aufgerufen beim Dienststart (bin/xl_dienst.php), nach der Dienstsperre und VOR
+ * dem ersten Lesen der Konfiguration in xl_dienst_lauf().
+ *
+ *  - nur mit LoxBerry-Wurzel und nicht waehrend einer Aktualisierung: eine vorhandene Marke (xl_upgrade_marke())
+ *    haelt das Schreiben an, solange sie nicht nachweislich aelter als eine Stunde ist (geschlossen ausfallen);
+ *  - nur an einer Datei mit Merkwort: ein JSON-Objekt mit einem Aktionstoken in der Form von xl_token_gueltig();
+ *    eine fehlende, leere, kaputte oder tokenlose Datei ist Sache der Heilung in xl_config() bzw. von xl_token();
+ *  - geschrieben werden die WERTE AUS DER DATEI plus die fehlenden Vorgaben; fremde Schluessel bleiben stehen; nur
+ *    die Schluessel aus xl_vorgaben(), die das Speichern im Formular ebenfalls schreibt;
+ *  - eine Lese-Regel fuer Bestandsdateien hat xl_config() nicht (ein fehlender Schluessel gilt als Vorgabe; die
+ *    Spaetliste xl_spaet_schluessel() gilt nur beim Zurueckspielen einer Sicherung), also wird die Vorgabe
+ *    eingetragen;
+ *  - geschrieben wird nur, wenn etwas fehlt; Weg wie beim Speichern (xl_config_speichern(): 0600, Zweitschrift);
+ *    eine Protokollzeile mit den Namen, nie mit Werten.
+ *
+ * Rueckgabe: die Namen der eingetragenen Schluessel; leer, wenn nichts geschrieben wurde.
+ */
+function xl_config_vervollstaendigen()
+{
+    $p = xl_paths();
+    if ($p['home'] === '') { return array(); }
+    list($marke_da, , $marke_alter) = xl_upgrade_marke();
+    if ($marke_da && !($marke_alter > 3600)) { return array(); }
+    clearstatcache(true, $p['config']);
+    if (!is_file($p['config']) || !is_readable($p['config'])) { return array(); }
+    $roh = @file_get_contents($p['config']);
+    if (!is_string($roh) || substr(ltrim($roh), 0, 1) !== '{') { return array(); }
+    $datei = json_decode($roh, true);
+    if (!is_array($datei) || !isset($datei['aktionstoken']) || !xl_token_gueltig($datei['aktionstoken'])) { return array(); }
+    // Ein leeres Objekt der Datei ({}) bliebe nach json_decode(..., true) ein leeres Feld und kaeme beim Schreiben
+    // als [] zurueck - die leeren Objekte des Rohtextes bleiben Objekte (11.11.2026).
+    $datei = xl_json_leere_objekte($datei, json_decode($roh));
+    $fehlend = array();
+    foreach (xl_vorgaben() as $k => $w) {
+        if (!array_key_exists($k, $datei)) {
+            $datei[$k] = $w;
+            $fehlend[] = (string) $k;
+        }
+    }
+    if (!$fehlend) { return array(); }
+    if (!xl_config_speichern($datei)) { return array(); }
+    xl_log('Konfiguration vervollstaendigt: ' . count($fehlend) . ' fehlende Einstellung(en) mit der Vorgabe eingetragen ('
+        . implode(', ', $fehlend) . ').');
+    return $fehlend;
+}
+
 /** Das Merkmal jedes Formulars (Regeln/04); ohne Aktionstoken leer - dann weist die Pruefung ab (fail closed). */
 function xl_formtoken($cfg = null)
 {

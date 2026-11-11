@@ -96,6 +96,15 @@ if (function_exists('pcntl_signal') && function_exists('pcntl_async_signals')) {
 }
 
 xl_log('Dienst gestartet (PID ' . getmypid() . ', PHP ' . PHP_VERSION . (extension_loaded('openssl') ? '' : ', OHNE openssl') . ').');
+/* 0.9.8 (Regeln/05): fehlende Einstellungen einmal mit ihrer Vorgabe in xiaomilicht.json eintragen - beim Dienststart,
+ * nach der Dienstsperre und vor dem ersten Lesen der Konfiguration in xl_dienst_lauf(); nicht waehrend einer
+ * Aktualisierung (Marke, siehe xl_config_vervollstaendigen()). Schreibt nur, wenn etwas fehlt. Ein Fehler hier haelt
+ * den Dienst nicht auf. */
+try {
+    xl_config_vervollstaendigen();
+} catch (Throwable $xl_vv) {
+    xl_log_gebremst('vervollstaendigen', 'Konfiguration vervollstaendigen abgebrochen (' . get_class($xl_vv) . ').');
+}
 xl_dienst_lauf();
 xl_log('Dienst beendet.');
 exit(0);

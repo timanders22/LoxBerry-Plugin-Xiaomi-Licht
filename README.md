@@ -3,9 +3,15 @@
 Bindet Deckenleuchten von Xiaomi und Yeelight an Loxone an und meldet den **echten Zustand** zurück – auch wenn jemand
 die Lampe über die Mi-Home- oder Yeelight-App, Alexa oder den Wandschalter verändert.
 
-Version 0.9.7 · Lizenz MIT · LoxBerry ab 3.0.0 · PHP 7.4 und 8.x
+Version 0.9.8 · Lizenz MIT · LoxBerry ab 3.0.0 · PHP 7.4 und 8.x
 
 ---
+
+## Neu in 0.9.8
+
+- **Konfiguration wird vervollständigt:** Fehlen in `xiaomilicht.json` Einstellungen, die eine neuere Fassung mitbringt, trägt der Dienst beim Start (`bin/xl_dienst.php`) sie jetzt einmal mit ihrer Vorgabe in die Datei ein; die Zweitschrift zieht mit. Das Protokoll nennt die ergänzten Namen in einer Zeile, nie die Werte. Bisher ergänzte das Plugin fehlende Einstellungen nur beim Lesen; in die Datei kamen sie erst beim nächsten Speichern im Formular. Die Vorgaben sind die Werte, die das Plugin bisher ohnehin angenommen hat; am Verhalten ändert sich nichts.
+- Geschrieben werden die Werte, die in der Datei stehen, plus die fehlenden Vorgaben. Unbekannte Schlüssel bleiben stehen, geschrieben wird nur, wenn etwas fehlt. Eine fehlende, leere oder beschädigte Datei und eine Datei ohne gültiges Aktionstoken werden nicht angefasst, ebenso wenig während einer Aktualisierung. Läuft der Dienst nicht, wird auch nichts vervollständigt. Gemessen ist das im Prüfstand unter PHP 7.4 und 8.4 auf dem Arbeitsrechner, an einer Datei in der Gestalt der Fassung 0.9.1, nicht am Gerät.
+- Leere Objekte (`{}`) in der Datei bleiben beim Vervollständigen erhalten, auch verschachtelte und solche unter unbekannten Schlüsseln; sie werden dabei nicht zu leeren Listen (`[]`).
 
 ## Neu in 0.9.7
 
