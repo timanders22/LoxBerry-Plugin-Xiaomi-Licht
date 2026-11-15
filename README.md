@@ -3,9 +3,27 @@
 Bindet Deckenleuchten von Xiaomi und Yeelight an Loxone an und meldet den **echten Zustand** zurück – auch wenn jemand
 die Lampe über die Mi-Home- oder Yeelight-App, Alexa oder den Wandschalter verändert.
 
-Version 0.9.8 · Lizenz MIT · LoxBerry ab 3.0.0 · PHP 7.4 und 8.x
+Version 0.9.9 · Lizenz MIT · LoxBerry ab 3.0.0 · PHP 7.4 und 8.x
 
 ---
+
+## Neu in 0.9.9
+
+Am Gerät nicht gemessen: Diese Fassung wurde vor der Veröffentlichung nicht auf einem LoxBerry installiert. Gemessen wurde mit einem Prüfstand unter PHP 7.4 und 8.4 auf dem Arbeitsrechner, der über einen Webserver die echten Knöpfe drückt.
+
+- **Verhalten geändert – Einstellungen sichern und zurückspielen über das gemeinsame Sicherungsmodul 1.2.3:** Die Knöpfe „Sicherung herunterladen“ und „Sicherung einspielen“ arbeiten jetzt mit demselben Sicherungsmodul wie die übrigen Plugins dieser Reihe, die schon umgestellt sind.
+  - Die Sicherungsdatei trägt im Kopf das Kennzeichen des Plugins (`_plugin` = `LoxBerry-Plugin-Xiaomi-Licht`) und die Fassung (`_fassung`). Bis 0.9.8 stand dort `Xiaomi Licht (<Ordner>)`; Sicherungen von 0.9.1 bis 0.9.8 werden daran weiter als eigene erkannt und angenommen.
+  - Eine Datei eines anderen Plugins und eine Datei ohne Kennzeichen werden als Ganzes abgewiesen. Bisher wurde jede Datei gelesen, deren Schlüssel passten.
+  - Eine Einstellung, die diese Fassung nicht kennt, wird nicht übernommen und mit ihrem Namen gemeldet, nie mit ihrem Wert – oben in der Datei, in den Blöcken der Sprachansagen und in den Zeilen der Lampenliste. Die übrigen Einstellungen werden zurückgespielt. Bisher wies ein unbekannter Name die ganze Datei ab.
+  - Ein leerer Wert in der Sicherung überschreibt keinen bestehenden; der bisherige Wert bleibt, und die Meldung nennt den Namen. Bisher wurde die Datei dann abgewiesen.
+  - Fehlt einer Sicherung eine Einstellung, die ihre Fassung noch nicht kannte (Sprachansagen, die Haken der Befehle und der HTTP-Lesezweig), behält diese ihren geltenden Wert, und die Meldung nennt sie.
+  - Nach dem Zurückspielen wird die Befehlsbrücke sofort nach dem zurückgespielten Stand geschaltet, wie beim Speichern im Reiter MQTT. Die Meldung sagt, dass der laufende Dienst die Einstellungen spätestens nach 30 Sekunden neu liest und nicht neu gestartet wird.
+  - Der Haken vor dem Knopf „Sicherung einspielen“ und die Prüfung der hochgeladenen Datei (über das Formular gekommen, höchstens 256 KB) kommen jetzt aus dem gemeinsamen Modul; der Text des Hakens lautet „Ja, die geltenden Einstellungen durch die Sicherung ersetzen“.
+  - Unverändert: Eine Datei mit einem unzulässigen Wert ändert gar nichts, alle Beanstandungen werden genannt. Aktionstoken und Token der Lampen gehören in die Datei, die Sprechtoken nicht. Die Zweitschrift zieht mit.
+- **Der Datenordner übersteht ein Update:** Bei jedem Update löscht LoxBerry den Datenordner des Plugins (`data/plugins/xiaomilicht/`). Jetzt sichert `preupgrade.sh` über den gemeinsamen Baustein `upgrade_daten.sh` (Fassung 1.0.0) den ganzen Datenordner mit Unterordnern, Rechten und Zeitstempeln neben den Ordner (`data/plugins/xiaomilicht.upgrade_daten/`, Ordner 0700) – ohne Sperr- und PID-Dateien und Sockets – und zählt die Kopie Datei für Datei gegen. `postinstall.sh` spielt als Erstes jede Datei zurück, die nach dem Update fehlt; bei einer Neuinstallation geschieht dort nichts. Was die neue Fassung schon angelegt hat, wird nicht überschrieben. Danach wird die Sicherung entfernt.
+  - **Verhalten geändert – lieber kein Update als ein leerer Datenordner:** Lässt sich der Datenordner nicht vollständig sichern (zu wenig Platz, fehlende Rechte, eine unlesbare Datei), meldet `preupgrade.sh` das mit `<FAIL>` und bricht die Aktualisierung ab; die bisherige Fassung bleibt mit ihrem Datenordner installiert.
+  - Eine Sicherung, die älter als eine Stunde ist, wird nicht eingespielt und bleibt liegen; das Protokoll sagt es. Die Deinstallation räumt eine liegengebliebene Sicherung mit ab.
+  - Zurück kommt auch der Merker `soll_laufen`, wenn der Dienst vor dem Update laufen sollte. Der Wächter im Minutentakt startet den Dienst erst, wenn die Aktualisierung zu Ende ist (die Marke `xiaomilicht.upgrade_laeuft` sperrt den Start bis dahin); wie bisher startet `postupgrade.sh` den Dienst, wenn er vorher lief.
 
 ## Neu in 0.9.8
 

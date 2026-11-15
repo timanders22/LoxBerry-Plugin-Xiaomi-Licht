@@ -375,9 +375,12 @@ if ($xl_post) {
 
         case 'sicherung':
             $xl_tab = 'tab-settings';
-            if ($xl_wert('aktion') === 'holen') {
+            /* 0.9.9: die beiden Knoepfe tragen eigene Namen (xl_sichern, xl_zurueck) wie in den anderen Linien; das
+             * Feld aktion (holen | zurueck, bis 0.9.8) gilt weiter. */
+            $xl_saktion = isset($_POST['xl_sichern']) ? 'holen' : (isset($_POST['xl_zurueck']) ? 'zurueck' : $xl_wert('aktion'));
+            if ($xl_saktion === 'holen') {
                 $xl_js = xl_sicherung_datei();
-                if ($xl_js === false) {
+                if ($xl_js === '') {
                     $xl_misslungen[] = xl_t('EINST.F_SICHERUNG');
                     break;
                 }
@@ -387,31 +390,43 @@ if ($xl_post) {
                 echo $xl_js;
                 exit;
             }
-            if (!isset($_POST['zurueck_ok'])) {
-                $xl_misslungen[] = xl_t('EINST.F_ZURUECK_HAKEN');
+            if ($xl_saktion !== 'zurueck') {
+                $xl_misslungen[] = xl_t('ALLG.FORMULAR_UNBEKANNT');
                 break;
             }
-            if (!isset($_FILES['sicherung']['tmp_name']) || !is_string($_FILES['sicherung']['tmp_name'])
-                || !@is_uploaded_file($_FILES['sicherung']['tmp_name'])) {
-                $xl_misslungen[] = xl_t('EINST.SICH_KEINE_DATEI');
+            /* 0.9.9: Haken, hochgeladene Datei und Groessengrenze prueft das gemeinsame Sicherungsmodul
+             * (sicherung_eingang(), Modul 1.1.0, Entscheidung des Hausherrn 12.11.2026) - in jeder Linie gleich; der
+             * Haken zurueck_ok und sein Text kommen seither aus dem Modul (bis 0.9.8 eigene Texte der Linie). Ohne
+             * Haken wird nichts gelesen und nichts geaendert. Die Seite maskiert jede Meldung bei der Ausgabe, deshalb
+             * bekommt sicherung_meldungen() die Meldungen als Klartext ('e'). */
+            $xl_sb = xl_sicherung_beschreibung();
+            $xl_sm = array('e' => function ($s) { return (string) $s; }) + $xl_sb;
+            list($xl_ein_roh, $xl_ein_ab) = sicherung_eingang($xl_sb, $_POST, $_FILES, 'sicherung');
+            if ($xl_ein_ab !== null) {
+                $xl_ein_m = sicherung_meldungen($xl_sm, $xl_ein_ab);
+                foreach ($xl_ein_m['fehler'] as $xl_ein_x) { $xl_misslungen[] = $xl_ein_x; }
                 break;
             }
-            if ((int) $_FILES['sicherung']['size'] > 262144) {
-                $xl_misslungen[] = xl_t('EINST.SICH_ZU_GROSS');
-                break;
-            }
-            list($xl_neu, $xl_mangel, $xl_sh, $xl_n) = xl_sicherung_lesen((string) @file_get_contents($_FILES['sicherung']['tmp_name']), $xl_cfg);
-            if ($xl_neu === null) {
-                $xl_fehler[] = xl_t('EINST.SICH_ABGELEHNT');
-                $xl_fehler = array_merge($xl_fehler, $xl_mangel);
-                break;
-            }
-            if (xl_config_speichern($xl_neu)) {
-                $xl_meldungen[] = sprintf(xl_t('EINST.SICH_UEBERNOMMEN'), $xl_n);
-                $xl_hinweise = array_merge($xl_hinweise, $xl_sh);
+            /* 0.9.9: das gemeinsame Sicherungsmodul liest und prueft (Kennzeichen, jeder Wert), verwirft Unbekanntes
+             * mit Namen, laesst bei einem leeren Wert den bisherigen stehen, aendert bei einer Beanstandung GAR
+             * NICHTS, speichert samt Zweitschrift (xl_config_speichern()), misst sie nach und sagt, was mit dem Dienst
+             * und der Befehlsbruecke geschah. */
+            $xl_sb['nachziehen'] = function ($neu) {
                 xl_test_zwischen_leeren();
+                $h = array(xl_t('EINST.SICH_DIENST'));
+                list($rc, $was) = xl_bruecke_schalten($neu);
+                if ($rc !== null) {
+                    $h[] = $rc === 0 ? sprintf(xl_t('MQTT.M_BRUECKE_OK'), $was) : sprintf(xl_t('MQTT.M_BRUECKE_FEHL'), $was);
+                }
+                return $h;
+            };
+            $xl_r = sicherung_zurueckspielen($xl_sb, $xl_ein_roh);
+            $xl_m = sicherung_meldungen(array('e' => function ($s) { return (string) $s; }) + $xl_sb, $xl_r);
+            if (!$xl_r['ok']) {
+                $xl_fehler = array_merge($xl_fehler, $xl_m['fehler']);
             } else {
-                $xl_misslungen[] = xl_t('EINST.F_SPEICHERN');
+                $xl_misslungen = array_merge($xl_misslungen, $xl_m['fehler']);
+                $xl_meldungen = array_merge($xl_meldungen, $xl_m['hinweise']);
             }
             break;
 
@@ -904,7 +919,7 @@ $xl_cloud = isset($xl_zusatz['cloud']) && is_array($xl_zusatz['cloud']) ? $xl_zu
     <input data-role="none" type="hidden" name="activetab" value="tab-settings">
     <input data-role="none" type="hidden" name="fmt" value="<?= xl_e($xl_fmt) ?>">
     <input data-role="none" type="hidden" name="formular" value="sicherung">
-    <button data-role="none" class="sm-btn sm-b-lesen" type="submit" name="aktion" value="holen"><?= xl_e(xl_t('EINST.K_SICHERUNG')) ?></button>
+    <button data-role="none" class="sm-btn sm-b-lesen" type="submit" name="xl_sichern" value="1"><?= xl_e(xl_t('EINST.K_SICHERUNG')) ?></button>
   </form>
 </div>
 <form action="index.php" method="post" enctype="multipart/form-data">
@@ -913,9 +928,9 @@ $xl_cloud = isset($xl_zusatz['cloud']) && is_array($xl_zusatz['cloud']) ? $xl_zu
 <input data-role="none" type="hidden" name="formular" value="sicherung">
 <div class="sm-feld"><label for="sicherung"><?= xl_e(xl_t('EINST.L_ZURUECK')) ?></label>
 <input data-role="none" type="file" id="sicherung" name="sicherung" accept=".json,application/json"></div>
-<div class="sm-feld"><label><input data-role="none" type="checkbox" name="zurueck_ok" value="1"> <?= xl_e(xl_t('EINST.ZURUECK_HAKEN')) ?></label></div>
+<?= sicherung_haken_zeile(xl_sicherung_beschreibung()) ?>
 <div class="sm-knopfreihe">
-<button data-role="none" class="sm-btn sm-b-aktion" type="submit" name="aktion" value="zurueck"><?= xl_e(xl_t('EINST.K_ZURUECK')) ?></button>
+<button data-role="none" class="sm-btn sm-b-aktion" type="submit" name="xl_zurueck" value="1"><?= xl_e(xl_t('EINST.K_ZURUECK')) ?></button>
 </div>
 </form>
 </div>

@@ -1,5 +1,10 @@
 <?php
 require_once __DIR__ . '/sprachausgabe.php';     // Stamm, fuer die Vorgaben der Sprachansagen schon beim ersten Lesen der Konfiguration
+/* 0.9.9: Das gemeinsame Sicherungsmodul (Abschrift von Werkzeuge/gemeinsam/sicherung.php, Auftrag des Hausherrn
+ * 12.11.2026): Einstellungen sichern und zurueckspielen nach denselben Regeln wie in den anderen Linien. Es legt beim
+ * Laden nur Funktionen an und antwortet bei direktem Aufruf mit 403. Die Beschreibung dieser Linie steht in
+ * xl_sicherung_beschreibung(). */
+require_once __DIR__ . '/sicherung.php';
 /**
  * Xiaomi Licht - gemeinsame Bibliothek (Kuerzel xl, Ordner xiaomilicht).
  *
@@ -3080,11 +3085,6 @@ function xl_sicherung_wert_pruefen($k, $w)
     return array(sprintf(xl_t('EINST.SICH_FREMD'), $k));
 }
 
-/**
- * Eine Sicherungsdatei einlesen - eine halb gueltige Datei ueberschreibt NICHTS. Feste Feldliste (xl_vorgaben()),
- * unbekannte Schluessel beanstandet, fehlende beanstandet - ausser der Spaetliste: fehlt dort ein Schluessel, gilt der
- * GELTENDE Wert mit Hinweis (Bauart G26/G27/G32). Rueckgabe array(Konfiguration|null, Beanstandungen, Hinweise, Anzahl).
- */
 /** Die Schluessel der Sprachansagen in der Hauptkonfiguration. */
 function xl_ansage_schluessel()
 {
@@ -3121,46 +3121,28 @@ function xl_ansage_wert($k, $w)
     return false;
 }
 
-/** Fuer die Sicherung: nie ein Sprechtoken, nie der Herkunftsvermerk. Ausgabeart, Ziele, Regeln und Haken reisen mit. */
-function xl_ansage_fuer_sicherung(array $c)
-{
-    unset($c['ansage_token_herkunft'], $c['ansage_aus_datei']);
-    if (isset($c['tts']) && is_array($c['tts'])) { $c['tts'] = ansage_sicherung_bereinigen($c['tts']); }
-    return $c;
-}
-
 /**
- * Vor dem Zurueckspielen. Eine Datei mit Sprechtoken wird abgewiesen (der Block wird unbrauchbar gemacht, die Wertpruefung nennt ihn). Die geltenden Token und der Vermerk bleiben.
- * Fehlt ein Schluessel (Sicherung einer aelteren Fassung), gilt der geltende Wert: Ein bewusstes AUS geht beim Zurueckspielen nicht verloren.
+ * 0.9.9: Der Block tts vor der Pruefung (Rueckruf 'vorbehandeln' des Sicherungsmoduls) - was bis 0.9.8
+ * xl_ansage_sicherung_vor() an der rohen Datei tat, jetzt nach dem Verwerfen unbekannter Unterschluessel: ein Block
+ * mit Sprechtoken oder mit einem unzulaessigen Wert wird unbrauchbar gemacht (die Wertpruefung nennt ihn), sonst
+ * vervollstaendigt, und die geltenden Sprechtoken bleiben. Fehlt der Block (Sicherung einer aelteren Fassung),
+ * behaelt das Modul den geltenden ('fehlt' => 'behalten'), ebenso ansage_regeln und ansage_haken - wie bis 0.9.8:
+ * ein bewusstes AUS geht beim Zurueckspielen nicht verloren.
  */
-function xl_ansage_sicherung_vor($roh)
+function xl_sicherung_vorbehandeln($bereit)
 {
-    $d = json_decode((string) $roh, true);
-    if (!is_array($d)) { return $roh; }
-    $inhalt = false;
-    foreach (array_keys($d) as $k) { if ((string) $k !== '' && ((string) $k)[0] !== '_') { $inhalt = true; } }
-    if (!$inhalt) { return $roh; }
+    if (!array_key_exists('tts', $bereit)) { return $bereit; }
     $j = xl_ansage_cfg();
-    unset($d['ansage_token_herkunft'], $d['ansage_aus_datei']);
     $jt = isset($j['tts']) && is_array($j['tts']) ? $j['tts'] : array();
-    if (array_key_exists('tts', $d)) {
-        $g = '';
-        $p = is_array($d['tts']) ? ansage_wert_pruefen($d['tts'], $g, xl_ansage_modi()) : null;
-        if (ansage_sicherung_mangel($d['tts']) || $p === null) {
-            $d['tts'] = 'ABGEWIESEN';
-        } else {
-            list($tv) = ansage_vervollstaendigen($p, 'aus');
-            $d['tts'] = ansage_sicherung_tokens_behalten($tv, $jt);
-        }
+    $g = '';
+    $p = is_array($bereit['tts']) ? ansage_wert_pruefen($bereit['tts'], $g, xl_ansage_modi()) : null;
+    if (!is_array($bereit['tts']) || ansage_sicherung_mangel($bereit['tts']) || $p === null) {
+        $bereit['tts'] = 'ABGEWIESEN';
     } else {
-        $d['tts'] = xl_tts($j);
+        list($tv) = ansage_vervollstaendigen($p, 'aus');
+        $bereit['tts'] = ansage_sicherung_tokens_behalten($tv, $jt);
     }
-    foreach (array_diff(xl_ansage_schluessel(), array('tts', 'ansage_token_herkunft', 'ansage_aus_datei')) as $k) {
-        if (!array_key_exists($k, $d) && array_key_exists($k, $j)) { $d[$k] = $j[$k]; }
-    }
-    $d['ansage_token_herkunft'] = isset($j['ansage_token_herkunft']) && is_array($j['ansage_token_herkunft']) ? $j['ansage_token_herkunft'] : array();
-    $d['ansage_aus_datei'] = 1;
-    return (string) json_encode($d);
+    return $bereit;
 }
 
 /**
@@ -3540,82 +3522,82 @@ function xl_ansage_flanke($anlass, $gestoert, $name = '', $frist = 0, $jetzt = n
     return xl_ansage_legen(array($ein));
 }
 
-function xl_sicherung_lesen($roh, $geltend = null, &$namen = null)
-{
-    $roh = xl_ansage_sicherung_vor($roh);     // Token und Vermerk bleiben die geltenden
-    $namen = array();
-    $mangel = array();
-    $hinweise = array();
-    $daten = json_decode((string) $roh, true);
-    if (!is_array($daten) || ($daten && xl_ist_liste($daten))) {
-        return array(null, array(xl_t('EINST.SICH_KEIN_JSON')), array(), 0);
-    }
-    if (!is_array($geltend)) {
-        $geltend = xl_config(false);
-    }
-    $neu = xl_vorgaben();
-    $anzahl = 0;
-    foreach ($daten as $k => $w) {
-        $k = (string) $k;
-        if (substr($k, 0, 1) === '_') {
-            continue;     // lesbarer Kopf (_plugin, _stand, _hinweis)
-        }
-        $xl_aw = xl_ansage_wert($k, $w);     // Sprachansagen: eigene Pruefung; Token und Vermerk bleiben die geltenden
-        if ($xl_aw !== null) {
-            if ($xl_aw) { $neu[$k] = $w; $anzahl++; } else { $mangel[] = xl_t('ANSAGEPLUGIN.M_FEHL'); $namen[] = (string) $k; }
-            continue;
-        }
-        if (!array_key_exists($k, $neu)) {
-            $mangel[] = sprintf(xl_t('EINST.SICH_FREMD'), $k);
-            $namen[] = $k;
-            continue;
-        }
-        $wm = xl_sicherung_wert_pruefen($k, $w);
-        if ($wm) {
-            $mangel = array_merge($mangel, $wm);
-            $namen[] = $k;
-            continue;
-        }
-        $neu[$k] = $w;
-        $anzahl++;
-    }
-    if ($anzahl === 0 && !$mangel) {
-        $mangel[] = xl_t('EINST.SICH_LEER');
-    }
-    $fehlend = array();
-    foreach (array_keys(xl_vorgaben()) as $fk) {
-        if (array_key_exists($fk, $daten)) {
-            continue;
-        }
-        if (in_array($fk, xl_spaet_schluessel(), true)) {
-            $neu[$fk] = isset($geltend[$fk]) ? (int) !empty($geltend[$fk]) : 0;
-            $hinweise[] = sprintf(xl_t('EINST.SICH_SPAET'), $fk);
-            continue;
-        }
-        $fehlend[] = $fk;
-    }
-    if ($fehlend) {
-        $mangel[] = sprintf(xl_t('EINST.SICH_FEHLEND'), count($fehlend), implode(', ', $fehlend));
-        $namen = array_merge($namen, $fehlend);
-    }
-    return array($mangel ? null : $neu, $mangel, $hinweise, $anzahl);
-}
-
-/** Die Sicherungsdatei: lesbarer Kopf (_plugin, _stand, _hinweis - Regeln/05) und die ganze Konfiguration samt Token. */
-function xl_sicherung_datei()
+/**
+ * 0.9.9: Die Beschreibung dieser Linie fuer das gemeinsame Sicherungsmodul (Werkzeuge/gemeinsam/sicherung.php,
+ * Auftrag des Hausherrn 12.11.2026). Lesen, Pruefen und Zurueckspielen macht das Modul; bis 0.9.8 stand hier eine
+ * eigene Schleife (xl_sicherung_lesen()): ein unbekannter Schluessel - oben wie in den Bloecken - wies die ganze Datei
+ * ab, eine Datei mit dem Kennzeichen eines anderen Plugins oder ganz ohne Kennzeichen wurde gelesen wie eine eigene,
+ * und ein leerer Wert wurde beanstandet (gemessen 15.11.2026 an 0.9.8 mit Werkzeuge/sicherung_pruefstand.py --profil
+ * ist, Klasse A).
+ *
+ * Kennzeichen: bis 0.9.8 schrieb der Sichern-Knopf _plugin = "Xiaomi Licht (<Ordner>)" (gemessen 15.11.2026 an 0.9.1
+ * bis 0.9.8). Das traegt Leerzeichen und Klammern und ist keine Namensform, die das Modul als Kennzeichen annimmt; es
+ * haengt zudem am Ordner der Anlage. Neu ist deshalb der Name des Repositorys, LoxBerry-Plugin-Xiaomi-Licht; die
+ * bisherige Form gilt ueber ein Muster als frueheres Kennzeichen derselben Linie (mit jedem Ordner), wie bei
+ * Audioserver-NG (Regeln/05 Regel 1).
+ *
+ * Inhalt wie bisher: alle Schluessel von xl_vorgaben() samt Aktionstoken und Lampenliste mit den Token der Lampen.
+ * Nie darin: die Sprechtoken im Block tts ('sichern' => ansage_sicherung_bereinigen) und die Vermerke
+ * ansage_token_herkunft, ansage_aus_datei ('nie_aus_datei'). Fehlen darf, was aeltere Fassungen nicht kannten: die
+ * Sprachansagen (tts, ansage_regeln, ansage_haken) und xl_spaet_schluessel() behalten dann den geltenden Wert und
+ * werden genannt (bis 0.9.8 ebenso, nur ohne Namen fuer die Sprachansagen). Jeder Wert geht wie bisher durch
+ * xl_ansage_wert() bzw. xl_sicherung_wert_pruefen() - dieselben Regeln wie im Formular (xl_regeln()).
+ */
+function xl_sicherung_beschreibung()
 {
     $p = xl_paths();
-    $kopf = array(
-        '_plugin'  => 'Xiaomi Licht (' . $p['plugin'] . ')',
-        '_stand'   => (xl_fassung() !== '' ? xl_fassung() : 'unbekannt') . ', ' . date('Y-m-d H:i:s'),
-        '_hinweis' => xl_klartext('EINST.SICH_KOPF_HINWEIS'),
+    $tts = array_merge(array_keys(ansage_werk_block()), ansage_geheim());
+    $schluessel = array(
+        'tts' => sicherung_block($tts, array('ziele' => sicherung_liste(array('art', 'wo', 'laut', 'sprache', 'ein'))))
+                 + array('fehlt' => 'behalten', 'sichern' => 'ansage_sicherung_bereinigen'),
+        'ansage_regeln' => sicherung_block(array_keys(ansage_regeln_vorgaben())) + array('fehlt' => 'behalten'),
+        'ansage_haken' => sicherung_block(array('geraet')) + array('fehlt' => 'behalten'),
+        /* Die Lampenliste: feste Felder je Zeile; ein unbekanntes Feld wird verworfen und genannt. Ohne
+         * Zuordnungsschluessel wie bis 0.9.8: ein leeres Feld einer Zeile wird uebernommen, wie es in der Datei steht
+         * (Regeln/05 Regel 3 greift in Listen nur mit Zuordnungsschluessel). */
+        'lampen' => sicherung_liste(array('nr', 'name', 'ip', 'token', 'modell', 'lan', 'did')),
     );
-    $cfg = xl_config();
-    $daten = array();
-    foreach (array_keys(xl_vorgaben()) as $k) {
-        $daten[$k] = $cfg[$k];
+    foreach (xl_spaet_schluessel() as $s) {
+        $schluessel[$s] = array('fehlt' => 'behalten');
     }
-    return json_encode($kopf + xl_ansage_fuer_sicherung($daten), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);     // nie ein Sprechtoken
+    return array(
+        'kennzeichen' => 'LoxBerry-Plugin-Xiaomi-Licht',
+        'kennzeichen_frueher_muster' => '/^Xiaomi Licht \([A-Za-z0-9_.\-]{1,64}\)\z/',
+        'hinweis' => xl_klartext('EINST.SICH_KOPF_HINWEIS'),
+        'fassung' => 'xl_fassung',
+        'home' => $p['home'],
+        'ordner' => $p['plugin'],
+        'vorgaben' => xl_vorgaben(),
+        'schluessel' => $schluessel,
+        'nie_aus_datei' => array('ansage_token_herkunft', 'ansage_aus_datei'),
+        'pruefen' => function ($k, $w) {
+            $aw = xl_ansage_wert($k, $w);
+            if ($aw !== null) { return $aw ? '' : xl_t('ANSAGEPLUGIN.M_FEHL') . ' (' . $k . ')'; }
+            return xl_sicherung_wert_pruefen($k, $w);     // Liste der Beanstandungen, leer = in Ordnung
+        },
+        'vorbehandeln' => 'xl_sicherung_vorbehandeln',
+        'jetzt' => function () { return xl_config(false); },
+        'vorbereiten' => function ($neu) {
+            /* Herkunft der Sprechtoken und der Vermerk ansage_aus_datei kommen nie aus der Datei; wie bis 0.9.8 setzt
+             * das Zurueckspielen ansage_aus_datei auf 1 (eine liegengebliebene ansage.json wird danach nicht mehr
+             * uebernommen). */
+            $j = xl_ansage_cfg();
+            $neu['ansage_token_herkunft'] = isset($j['ansage_token_herkunft']) && is_array($j['ansage_token_herkunft'])
+                ? $j['ansage_token_herkunft'] : array();
+            $neu['ansage_aus_datei'] = 1;
+            return $neu;
+        },
+        'speichern' => function ($neu) { return xl_config_speichern($neu); },
+        'zweitschrift' => function () { $q = xl_paths(); return array($q['config'], $q['sicherung']); },
+        'log' => 'xl_log',
+        't' => 'xl_t',
+    );
+}
+
+/** Die Sicherungsdatei (0.9.9: gebaut vom gemeinsamen Modul, nie ein Sprechtoken); '' wenn sie sich nicht bilden laesst. */
+function xl_sicherung_datei()
+{
+    return sicherung_json(sicherung_bauen(xl_sicherung_beschreibung(), xl_config()));
 }
 
 /**

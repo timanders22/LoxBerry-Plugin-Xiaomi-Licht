@@ -6,6 +6,10 @@
 # - Konfiguration vor dem Kopierschritt in die Zweitschrift config/plugins/<ordner>.backup.json sichern (0600), nur
 #   wenn sie Einstellungen traegt - eine leere Datei ueberschreibt nie eine heile Zweitschrift.
 # Ordner und Wurzel kommen aus $3/$5 (nicht $1, nicht /tmp).
+# [upgrade_daten] Argumente des Installers festhalten - unten sichert der gemeinsame Baustein
+# [upgrade_daten] upgrade_daten.sh (neben diesem Skript) den ganzen Datenordner.
+UPGD_ORDNER="$3"; UPGD_WURZEL="$5"
+
 ARGV3=$3
 ARGV5=$5
 PFOLDER="${ARGV3:-xiaomilicht}"
@@ -135,4 +139,13 @@ if [ -f "$XL_BBSH" ]; then
 fi
 zs_schluss
 echo "<OK> preupgrade abgeschlossen."
+# [upgrade_daten] Gemeinsamer Baustein (Werkzeuge/gemeinsam/upgrade_daten.sh): den ganzen Datenordner
+# [upgrade_daten] neben den Ordner sichern; misslingt das, bricht die Aktualisierung mit Rueckgabe 2 ab.
+if [ -f "$(dirname "$0")/upgrade_daten.sh" ] && . "$(dirname "$0")/upgrade_daten.sh"; then
+    upgrade_daten_sichern "$UPGD_ORDNER" "$UPGD_WURZEL" || exit 2
+else
+    echo "<FAIL> Der Baustein upgrade_daten.sh fehlt neben $(basename "$0") - die Aktualisierung wird abgebrochen,"
+    echo "<FAIL> die bisherige Fassung bleibt installiert."
+    exit 2
+fi
 exit 0
