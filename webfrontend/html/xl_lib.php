@@ -5,6 +5,7 @@ require_once __DIR__ . '/sprachausgabe.php';     // Stamm, fuer die Vorgaben der
  * Laden nur Funktionen an und antwortet bei direktem Aufruf mit 403. Die Beschreibung dieser Linie steht in
  * xl_sicherung_beschreibung(). */
 require_once __DIR__ . '/sicherung.php';
+require_once __DIR__ . '/uhrabgleich.php';   // gemeinsames Uhrmodul (Frage 95), Abschrift von Werkzeuge/gemeinsam/uhrabgleich.php
 /**
  * Xiaomi Licht - gemeinsame Bibliothek (Kuerzel xl, Ordner xiaomilicht).
  *

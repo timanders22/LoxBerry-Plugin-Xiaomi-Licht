@@ -172,6 +172,10 @@ function xl_test_zeilen($offen)
         list($ok, $t) = xl_test_endpunkt();
         $z[] = array($ok, xl_t('TEST.F_ENDPUNKT'), $t);
     }
+    /* Gemeinsames Uhrmodul (Frage 95): Systemuhr gegen die Xiaomi-Cloud (Hoechstalter 30 Tage, Entscheidung 106). */
+    list($uhr_s, $uhr_t) = uhr_pruefzeile(array('ordner' => xl_paths()['datadir'], 'dienst' => 'Xiaomi', 't' => 'xl_t',
+        'hoechstalter_s' => 2592000));
+    $z[] = array($uhr_s === 1 ? true : null, uhr_frage(array('t' => 'xl_t')), htmlspecialchars($uhr_t, ENT_QUOTES, 'UTF-8'), $uhr_s);
     return $z;
 }
 

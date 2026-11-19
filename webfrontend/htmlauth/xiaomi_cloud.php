@@ -9,8 +9,10 @@
  * hinzugefuegt, kein Feld geaendert. xc_code_anfordern(): Antwort von Xiaomi bei SENDEN ('art' SPERRE/CAPTCHA/UNBEKANNT,
  * 'code', 'grund'), Versand-Captcha mit $icode (neu xc_sendefehler(), xc_bild_holen()); Lage SENDEN bleibt.
  * Alle uebrigen Funktionen, auch xc_auswahl_nehmen(), unveraendert.
+ * 1.0.2 (Uhrmodul, Frage 95, Entwurf 19.11.2026): xc_http() merkt die Kopfzeile Date jeder Antwort der Xiaomi-Cloud
+ * ueber das gemeinsame Uhrmodul (uhr_merken() in xc_ablage()), wenn die Linie es geladen hat. Sonst nichts geaendert.
  */
-define('XC_FASSUNG', '1.0.1');
+define('XC_FASSUNG', '1.0.2');
 
 /** Ordner der Zwischenstaende (Captcha, Zweitfaktor, Auswahl; je 0600, <= 10 min). Die Linie setzt ihn einmal. */
 function xc_ablage($ordner = null)
@@ -203,6 +205,7 @@ function xc_http($methode, $url, array $abfrage, $form, array &$dose, array $zie
             $opt['content'] = $rumpf;
             $opt['header'] .= "Content-Type: application/x-www-form-urlencoded\r\nContent-Length: " . strlen($rumpf) . "\r\n";
         }
+        $uhr_t0 = microtime(true);
         $fp = @fopen($url, 'r', false, stream_context_create(array('http' => $opt)));
         if ($fp === false) { return array(0, '', array(), $neu_kekse, $url); }
         $meta = @stream_get_meta_data($fp);
@@ -220,6 +223,10 @@ function xc_http($methode, $url, array $abfrage, $form, array &$dose, array $zie
             if ($n === 'set-cookie' && preg_match('/^([^=;\s]+)=([^;]*)/', $w, $m)) {
                 if ($m[2] !== '' && strtoupper($m[2]) !== 'EXPIRED') { $dose[$m[1]] = $m[2]; $neu_kekse[$m[1]] = $m[2]; }
             }
+        }
+        if (function_exists('uhr_merken') && xc_ablage() !== '' && isset($kz['date'])) {
+            uhr_merken(xc_ablage(), uhr_datum_lesen($kz['date']), (int) round((microtime(true) - $uhr_t0) * 1000),
+                       (string) parse_url($url, PHP_URL_HOST));
         }
         if (!$folgen || $code < 300 || $code > 399 || !isset($kz['location'])) {
             return array($code, $rumpf, $kz, $neu_kekse, $url);

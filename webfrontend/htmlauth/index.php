@@ -1129,7 +1129,7 @@ foreach (xl_baustein_seiten() as $xl_seite => $xl_zeilen_b) {
 <div class="sm-breit">
 <table class="sm-tbl">
 <?php foreach (xl_test_zeilen(true) as $xl_tz) { ?>
-<tr><td><?= $xl_zeichen($xl_tz[0]) ?></td><td><?= xl_e($xl_tz[1]) ?></td><td><?= $xl_tz[2] ?></td></tr>
+<tr><td><?= isset($xl_tz[3]) ? uhr_zeichen($xl_tz[3]) : $xl_zeichen($xl_tz[0]) ?></td><td><?= xl_e($xl_tz[1]) ?></td><td><?= $xl_tz[2] ?></td></tr>
 <?php } ?>
 </table>
 </div>

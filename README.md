@@ -3,9 +3,13 @@
 Bindet Deckenleuchten von Xiaomi und Yeelight an Loxone an und meldet den **echten Zustand** zurück – auch wenn jemand
 die Lampe über die Mi-Home- oder Yeelight-App, Alexa oder den Wandschalter verändert.
 
-Version 0.9.12 · Lizenz MIT · LoxBerry ab 3.0.0 · PHP 7.4 und 8.x
+Version 0.9.13 · Lizenz MIT · LoxBerry ab 3.0.0 · PHP 7.4 und 8.x
 
 ---
+
+## Neu in 0.9.13
+
+- **Neu – Prüfzeile „Ist die Systemuhr synchron?“ (gemeinsames Uhrmodul):** Der Reiter „Test“ vergleicht die Systemuhr des LoxBerry mit der Kopfzeile Date der Antworten von der Xiaomi-Cloud und meldet nur: Haken bis 30 s Abweichung, gelber Punkt darüber, ohne Messung „nicht feststellbar“. `timedatectl` steht nur als Hinweis dabei. Die letzte Abweichung liegt in `data/plugins/xiaomilicht/uhr.json`; dafür liest das Plugin bei den Anfragen beim Holen der Schlüssel (gemeinsames Modul xiaomi_cloud.php 1.0.2) die Kopfzeile Date mit, am Abruf selbst ändert sich nichts. Die Cloud wird nur beim Holen der Schlüssel gefragt; eine Messung älter als 30 Tage gilt deshalb als „nicht feststellbar“. Ob eine falsche Uhr die Anmeldung bricht, ist nicht gemessen. Gemessen auf dem Arbeitsrechner: Selbsttest des Moduls unter PHP 7.4, 8.4 und 8.5 und mit Python, Kreuzprobe PHP/Python, Syntax aller geänderten Dateien; die Messung gegen die echte Cloud und am Gerät ist nicht gemessen.
 
 ## Neu in 0.9.12
 
