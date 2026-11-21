@@ -541,7 +541,8 @@ $xl_zeichen = function ($ok) {
 
 $xl_rahmen = class_exists('LBWeb', false);
 if ($xl_rahmen) {
-    LBWeb::lbheader('Xiaomi Licht', 'https://wiki.loxberry.de/', 'help.html');
+    require_once __DIR__ . '/fassung.php';   // Fassung im Titel: gemeinsames Stueck fassung.php (21.11.2026)
+    LBWeb::lbheader(plugin_kopftitel('Xiaomi Licht', __DIR__), 'https://wiki.loxberry.de/', 'help.html');
 }
 ?>
 <style>
