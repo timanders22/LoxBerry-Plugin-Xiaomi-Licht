@@ -83,6 +83,12 @@ $xl_wert = function ($k, $vorgabe = '') {
 
 /* ---------------- Handler (nur POST mit gueltigem Merkmal; jeder fasst nur seine eigenen Schluessel an) ---------------- */
 /* Sprachansagen, eigenes Formular. Die Testansage spricht immer. */
+/* 0.9.16: Testmeldung an SignalBot (Knopf unter den Sprachansagen) - wie die Testansage darunter. */
+if ($xl_post && isset($_POST['meld_test'])) {
+    list($xl_at, $xl_ag) = xl_meld_test();
+    if ($xl_at) { $xl_meldungen[] = xl_t('SIGNALMELDUNG.T_OK'); } else { $xl_fehler[] = $xl_ag; }
+    $xl_tab = 'tab-settings';
+}
 if ($xl_post && isset($_POST['ansage_test'])) {
     list($xl_at, $xl_ag) = xl_ansage_test();
     // 0.9.5 (K5): gesammelt wird Klartext, die Ausgabe unten maskiert. Bis 0.9.4 stand ein Apostroph als &#039; auf dem Schirm.
