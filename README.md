@@ -3,7 +3,7 @@
 Bindet Deckenleuchten von Xiaomi und Yeelight an Loxone an und meldet den **echten Zustand** zurück – auch wenn jemand
 die Lampe über die Mi-Home- oder Yeelight-App, Alexa oder den Wandschalter verändert.
 
-Version 0.9.16 · Lizenz MIT · LoxBerry ab 3.0.0 · PHP 7.4 und 8.x
+Version 0.9.17 · Lizenz MIT · LoxBerry ab 3.0.0 · PHP 7.4 und 8.x
 
 ---
 
